@@ -8,6 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/MichalTarasiuk/hackernews/graph"
+	database "github.com/MichalTarasiuk/hackernews/internal/pkg/db/mysql"
 )
 
 const defaultPort = "8080"
@@ -17,6 +18,10 @@ func main() {
 	if port == "" {
 		port = defaultPort
 	}
+
+	database.InitDB()
+	defer database.CloseDB()
+	database.Migrate()
 
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
 
