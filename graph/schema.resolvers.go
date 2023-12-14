@@ -3,21 +3,19 @@ package graph
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/MichalTarasiuk/hackernews/graph/model"
+	"github.com/MichalTarasiuk/hackernews/internal/links"
 )
 
 func (r *mutationResolver) CreateLink(ctx context.Context, input model.NewLink) (*model.Link, error) {
-	user := model.User{
-		Name: "test",
-	}
-	link := model.Link{
-		Address: input.Address,
-		Title:   input.Title,
-		User:    &user,
-	}
+	var link links.Link
+	link.Title = input.Title
+	link.Address = input.Address
+	linkID := link.Save()
+	return &model.Link{ID: strconv.FormatInt(linkID, 10), Title: link.Title, Address: link.Address}, nil
 
-	return &link, nil
 }
 
 func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) (string, error) {
@@ -33,14 +31,11 @@ func (r *mutationResolver) RefreshToken(ctx context.Context, input model.Refresh
 }
 
 func (r *queryResolver) Links(ctx context.Context) ([]*model.Link, error) {
-	var links []*model.Link
-	dummyLink := model.Link{
-		Title:   "our dummy link",
-		Address: "https://address.org",
-		User:    &model.User{Name: "admin"},
+	var resultLinks []*model.Link
+	for _, link := range links.GetAll() {
+		resultLinks = append(resultLinks, &model.Link{ID: link.ID, Title: link.Title, Address: link.Address})
 	}
-	links = append(links, &dummyLink)
-	return links, nil
+	return resultLinks, nil
 }
 
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
