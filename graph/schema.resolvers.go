@@ -6,19 +6,11 @@ import (
 	"strconv"
 
 	"github.com/MichalTarasiuk/hackernews/graph/model"
+	"github.com/MichalTarasiuk/hackernews/internal/auth"
 	"github.com/MichalTarasiuk/hackernews/internal/links"
 	"github.com/MichalTarasiuk/hackernews/internal/users"
 	"github.com/MichalTarasiuk/hackernews/pkg/jwt"
 )
-
-func (r *mutationResolver) CreateLink(ctx context.Context, input model.NewLink) (*model.Link, error) {
-	var link links.Link
-	link.Title = input.Title
-	link.Address = input.Address
-	linkID := link.Save()
-	return &model.Link{ID: strconv.FormatInt(linkID, 10), Title: link.Title, Address: link.Address}, nil
-
-}
 
 func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) (string, error) {
 	var user users.User
@@ -46,16 +38,40 @@ func (r *mutationResolver) Login(ctx context.Context, input model.Login) (string
 	}
 	return token, nil
 }
+
 func (r *mutationResolver) RefreshToken(ctx context.Context, input model.RefreshTokenInput) (string, error) {
 	panic(fmt.Errorf("not implemented: RefreshToken - refreshToken"))
 }
 
 func (r *queryResolver) Links(ctx context.Context) ([]*model.Link, error) {
 	var resultLinks []*model.Link
-	for _, link := range links.GetAll() {
-		resultLinks = append(resultLinks, &model.Link{ID: link.ID, Title: link.Title, Address: link.Address})
+	var dbLinks []links.Link
+	dbLinks = links.GetAll()
+	for _, link := range dbLinks {
+		graphqlUser := &model.User{
+			ID:   link.User.ID,
+			Name: link.User.Username,
+		}
+		resultLinks = append(resultLinks, &model.Link{ID: link.ID, Title: link.Title, Address: link.Address, User: graphqlUser})
 	}
 	return resultLinks, nil
+}
+
+func (r *mutationResolver) CreateLink(ctx context.Context, input model.NewLink) (*model.Link, error) {
+	user := auth.ForContext(ctx)
+	if user == nil {
+		return &model.Link{}, fmt.Errorf("access denied")
+	}
+	var link links.Link
+	link.Title = input.Title
+	link.Address = input.Address
+	link.User = user
+	linkId := link.Save()
+	grahpqlUser := &model.User{
+		ID:   user.ID,
+		Name: user.Username,
+	}
+	return &model.Link{ID: strconv.FormatInt(linkId, 10), Title: link.Title, Address: link.Address, User: grahpqlUser}, nil
 }
 
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
