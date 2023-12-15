@@ -13,9 +13,10 @@ import (
 )
 
 func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) (string, error) {
-	var user users.User
-	user.Username = input.Username
-	user.Password = input.Password
+	user := users.User{
+		Username: input.Username,
+		Password: input.Password,
+	}
 	user.Create()
 	token, err := jwt.GenerateToken(user.Username)
 	if err != nil {
@@ -25,9 +26,10 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 }
 
 func (r *mutationResolver) Login(ctx context.Context, input model.Login) (string, error) {
-	var user users.User
-	user.Username = input.Username
-	user.Password = input.Password
+	user := users.User{
+		Username: input.Username,
+		Password: input.Password,
+	}
 	correct := user.Authenticate()
 	if !correct {
 		return "", &users.WrongUsernameOrPasswordError{}
@@ -45,9 +47,7 @@ func (r *mutationResolver) RefreshToken(ctx context.Context, input model.Refresh
 
 func (r *queryResolver) Links(ctx context.Context) ([]*model.Link, error) {
 	var resultLinks []*model.Link
-	var dbLinks []links.Link
-	dbLinks = links.GetAll()
-	for _, link := range dbLinks {
+	for _, link := range links.GetAll() {
 		graphqlUser := &model.User{
 			ID:   link.User.ID,
 			Name: link.User.Username,
@@ -62,10 +62,11 @@ func (r *mutationResolver) CreateLink(ctx context.Context, input model.NewLink) 
 	if user == nil {
 		return &model.Link{}, fmt.Errorf("access denied")
 	}
-	var link links.Link
-	link.Title = input.Title
-	link.Address = input.Address
-	link.User = user
+	link := links.Link{
+		Title:   input.Title,
+		Address: input.Address,
+		User:    user,
+	}
 	linkId := link.Save()
 	grahpqlUser := &model.User{
 		ID:   user.ID,
